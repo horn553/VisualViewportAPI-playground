@@ -1,20 +1,29 @@
 <script lang="ts">
 	import Fab from '$lib/Fab.svelte';
 	import Gradient from '$lib/Gradient.svelte';
-	import { onMount } from 'svelte';
 
-	let supported = false;
-	let width = 0;
-	let height = 0;
-	let offsetLeft = 0;
-	let offsetTop = 0;
-	let scale = 1;
-	let dpr = 1;
-	let effectiveScale = 1;
-	let scaleInv = 1;
+	let supported = $state(false);
+	let width = $state(0);
+	let height = $state(0);
+	let offsetLeft = $state(0);
+	let offsetTop = $state(0);
+	let scale = $state(1);
+	let dpr = $state(1);
+	let hasMetrics = $state(false);
+	let baseDpr = $state(1);
 
-	let baseDpr = 1;
 	let rafId: number | null = null;
+
+	const dprRatio = $derived(dpr / baseDpr);
+	const effectiveScale = $derived(Math.max(0.01, scale * dprRatio));
+	const scaleInv = $derived(1 / effectiveScale);
+	const fabMargin = $derived(`${16 * scaleInv}px`);
+	const debugMargin = $derived(`${8 * scaleInv}px`);
+	const supportLabel = $derived(hasMetrics ? (supported ? 'yes' : 'no') : 'pending');
+	const vvWidth = $derived(hasMetrics ? `${width}px` : '100vw');
+	const vvHeight = $derived(hasMetrics ? `${height}px` : '100vh');
+	const vvLeft = $derived(`${offsetLeft}px`);
+	const vvTop = $derived(`${offsetTop}px`);
 
 	const fmt = (value: number, digits = 2) => value.toFixed(digits);
 
@@ -22,9 +31,7 @@
 		const vv = window.visualViewport;
 		supported = !!vv;
 
-		const currentDpr = window.devicePixelRatio || 1;
-		const dprRatio = currentDpr / baseDpr;
-		dpr = currentDpr;
+		dpr = window.devicePixelRatio || 1;
 
 		if (vv) {
 			width = vv.width;
@@ -40,8 +47,7 @@
 			scale = 1;
 		}
 
-		effectiveScale = Math.max(0.01, scale * dprRatio);
-		scaleInv = 1 / effectiveScale;
+		hasMetrics = true;
 	};
 
 	const scheduleUpdate = () => {
@@ -52,7 +58,9 @@
 		});
 	};
 
-	onMount(() => {
+	$effect(() => {
+		if (typeof window === 'undefined') return;
+
 		baseDpr = window.devicePixelRatio || 1;
 		updateMetrics();
 
@@ -78,7 +86,13 @@
 
 <div
 	class="vv-overlay"
-	style={`--vv-left:${offsetLeft}px; --vv-top:${offsetTop}px; --vv-width:${width}px; --vv-height:${height}px; --vv-scale-inv:${scaleInv};`}
+	style:--vv-left={vvLeft}
+	style:--vv-top={vvTop}
+	style:--vv-width={vvWidth}
+	style:--vv-height={vvHeight}
+	style:--vv-scale-inv={scaleInv}
+	style:--fab-margin={fabMargin}
+	style:--debug-margin={debugMargin}
 >
 	<div class="fab-slot">
 		<Fab />
@@ -87,7 +101,7 @@
 	<div class="vv-debug">
 		<div class="row">
 			<span class="label">supported</span>
-			<span class="value">{supported ? 'yes' : 'no'}</span>
+			<span class="value">{supportLabel}</span>
 		</div>
 		<div class="row">
 			<span class="label">scale</span>
@@ -133,8 +147,8 @@
 
 	.fab-slot {
 		position: absolute;
-		right: calc(16px * var(--vv-scale-inv));
-		bottom: calc(16px * var(--vv-scale-inv));
+		right: var(--fab-margin);
+		bottom: var(--fab-margin);
 		transform: scale(var(--vv-scale-inv));
 		transform-origin: bottom right;
 		pointer-events: auto;
@@ -142,8 +156,8 @@
 
 	.vv-debug {
 		position: absolute;
-		top: calc(8px * var(--vv-scale-inv));
-		left: calc(8px * var(--vv-scale-inv));
+		top: var(--debug-margin);
+		left: var(--debug-margin);
 		transform: scale(var(--vv-scale-inv));
 		transform-origin: top left;
 		pointer-events: auto;
