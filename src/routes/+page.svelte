@@ -12,7 +12,7 @@
 	let hasMetrics = $state(false);
 	let baseDpr = $state(1);
 
-	let rafId: number | null = null;
+	let debounceId: ReturnType<typeof setTimeout> | null = null;
 
 	const dprRatio = $derived(dpr / baseDpr);
 	const effectiveScale = $derived(Math.max(0.01, scale * dprRatio));
@@ -54,11 +54,13 @@
 	};
 
 	const scheduleUpdate = () => {
-		if (rafId !== null) return;
-		rafId = requestAnimationFrame(() => {
-			rafId = null;
+		if (debounceId !== null) {
+			clearTimeout(debounceId);
+		}
+		debounceId = setTimeout(() => {
+			debounceId = null;
 			updateMetrics();
-		});
+		}, 300);
 	};
 
 	$effect(() => {
@@ -75,7 +77,7 @@
 		window.addEventListener('resize', scheduleUpdate);
 
 		return () => {
-			if (rafId !== null) cancelAnimationFrame(rafId);
+			if (debounceId !== null) clearTimeout(debounceId);
 			if (vv) {
 				vv.removeEventListener('resize', scheduleUpdate);
 				vv.removeEventListener('scroll', scheduleUpdate);
@@ -156,6 +158,10 @@
 		bottom: var(--fab-margin);
 		transform: scale(var(--vv-scale-inv));
 		transform-origin: bottom right;
+		transition:
+			transform 0.1s ease,
+			right 0.1s ease,
+			bottom 0.1s ease;
 		pointer-events: auto;
 	}
 
@@ -165,6 +171,10 @@
 		left: var(--debug-margin);
 		transform: scale(var(--vv-scale-inv));
 		transform-origin: top left;
+		transition:
+			transform 0.1s ease,
+			top 0.1s ease,
+			left 0.1s ease;
 		pointer-events: auto;
 		background: rgba(255, 255, 255, 0.9);
 		border-radius: 8px;
