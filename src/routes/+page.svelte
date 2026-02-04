@@ -18,6 +18,7 @@
 	let baselineInitialized = $state(false);
 	let storedBaselineDpr: number | null = null;
 	let hasEntered = $state(false);
+	let isViewportInteracting = $state(false);
 
 	let debounceId: ReturnType<typeof setTimeout> | null = null;
 	let enterRafId: number | null = null;
@@ -27,10 +28,12 @@
 	const scaleInv = $derived(1 / effectiveScale);
 	const fabMargin = $derived(`${16 * scaleInv}px`);
 	const debugMargin = $derived(`${8 * scaleInv}px`);
-	const fabEnterX = $derived(hasEntered ? '0%' : '120%');
-	const fabEnterY = $derived(hasEntered ? '0%' : '120%');
-	const debugEnterX = $derived(hasEntered ? '0%' : '-120%');
-	const debugEnterY = $derived(hasEntered ? '0%' : '-120%');
+	const uiVisible = $derived(hasEntered && !isViewportInteracting);
+	const uiOpacity = $derived(uiVisible ? 1 : 0);
+	const fabEnterX = $derived(uiVisible ? '0%' : '120%');
+	const fabEnterY = $derived(uiVisible ? '0%' : '120%');
+	const debugEnterX = $derived(uiVisible ? '0%' : '-120%');
+	const debugEnterY = $derived(uiVisible ? '0%' : '-120%');
 	const supportLabel = $derived(hasMetrics ? (supported ? 'yes' : 'no') : 'pending');
 	const vvWidth = $derived(hasMetrics ? `${width}px` : '100vw');
 	const vvHeight = $derived(hasMetrics ? `${height}px` : '100vh');
@@ -121,12 +124,14 @@
 	};
 
 	const scheduleUpdate = () => {
+		isViewportInteracting = true;
 		if (debounceId !== null) {
 			clearTimeout(debounceId);
 		}
 		debounceId = setTimeout(() => {
 			debounceId = null;
 			updateMetrics();
+			isViewportInteracting = false;
 		}, 300);
 	};
 
@@ -174,6 +179,7 @@
 	style:--fab-enter-y={fabEnterY}
 	style:--debug-enter-x={debugEnterX}
 	style:--debug-enter-y={debugEnterY}
+	style:--ui-opacity={uiOpacity}
 >
 	<div class="fab-slot">
 		<Fab />
@@ -234,8 +240,10 @@
 		bottom: var(--fab-margin);
 		transform: translate3d(var(--fab-enter-x), var(--fab-enter-y), 0) scale(var(--vv-scale-inv));
 		transform-origin: bottom right;
+		opacity: var(--ui-opacity);
 		transition:
 			transform 0.1s ease,
+			opacity 0.1s ease,
 			right 0.1s ease,
 			bottom 0.1s ease;
 		pointer-events: auto;
@@ -247,8 +255,10 @@
 		left: var(--debug-margin);
 		transform: translate3d(var(--debug-enter-x), var(--debug-enter-y), 0) scale(var(--vv-scale-inv));
 		transform-origin: top left;
+		opacity: var(--ui-opacity);
 		transition:
 			transform 0.1s ease,
+			opacity 0.1s ease,
 			top 0.1s ease,
 			left 0.1s ease;
 		pointer-events: auto;
