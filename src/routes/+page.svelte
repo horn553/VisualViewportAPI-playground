@@ -26,19 +26,22 @@
 	const vvTop = $derived(`${offsetTop}px`);
 
 	const fmt = (value: number, digits = 2) => value.toFixed(digits);
+	const snapCssPx = (value: number, dprValue: number) => Math.round(value * dprValue) / dprValue;
+	const snapScale = (value: number, precision = 1000) => Math.round(value * precision) / precision;
 
 	const updateMetrics = () => {
 		const vv = window.visualViewport;
 		supported = !!vv;
 
-		dpr = window.devicePixelRatio || 1;
+		const nextDpr = window.devicePixelRatio || 1;
+		dpr = nextDpr;
 
 		if (vv) {
-			width = vv.width;
-			height = vv.height;
-			offsetLeft = vv.offsetLeft;
-			offsetTop = vv.offsetTop;
-			scale = vv.scale;
+			width = snapCssPx(vv.width, nextDpr);
+			height = snapCssPx(vv.height, nextDpr);
+			offsetLeft = snapCssPx(vv.offsetLeft, nextDpr);
+			offsetTop = snapCssPx(vv.offsetTop, nextDpr);
+			scale = snapScale(vv.scale);
 		} else {
 			width = window.innerWidth;
 			height = window.innerHeight;
@@ -137,10 +140,12 @@
 <style>
 	.vv-overlay {
 		position: fixed;
-		left: var(--vv-left);
-		top: var(--vv-top);
+		left: 0;
+		top: 0;
 		width: var(--vv-width);
 		height: var(--vv-height);
+		transform: translate3d(var(--vv-left), var(--vv-top), 0);
+		will-change: transform;
 		pointer-events: none;
 		z-index: 1000;
 	}
