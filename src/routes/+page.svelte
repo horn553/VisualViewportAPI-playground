@@ -11,14 +11,20 @@
 	let dpr = $state(1);
 	let hasMetrics = $state(false);
 	let baseDpr = $state(1);
+	let hasEntered = $state(false);
 
 	let debounceId: ReturnType<typeof setTimeout> | null = null;
+	let enterRafId: number | null = null;
 
 	const dprRatio = $derived(dpr / baseDpr);
 	const effectiveScale = $derived(Math.max(0.01, scale * dprRatio));
 	const scaleInv = $derived(1 / effectiveScale);
 	const fabMargin = $derived(`${16 * scaleInv}px`);
 	const debugMargin = $derived(`${8 * scaleInv}px`);
+	const fabEnterX = $derived(hasEntered ? '0%' : '120%');
+	const fabEnterY = $derived(hasEntered ? '0%' : '120%');
+	const debugEnterX = $derived(hasEntered ? '0%' : '-120%');
+	const debugEnterY = $derived(hasEntered ? '0%' : '-120%');
 	const supportLabel = $derived(hasMetrics ? (supported ? 'yes' : 'no') : 'pending');
 	const vvWidth = $derived(hasMetrics ? `${width}px` : '100vw');
 	const vvHeight = $derived(hasMetrics ? `${height}px` : '100vh');
@@ -68,6 +74,10 @@
 
 		baseDpr = window.devicePixelRatio || 1;
 		updateMetrics();
+		enterRafId = requestAnimationFrame(() => {
+			enterRafId = null;
+			hasEntered = true;
+		});
 
 		const vv = window.visualViewport;
 		if (vv) {
@@ -78,6 +88,7 @@
 
 		return () => {
 			if (debounceId !== null) clearTimeout(debounceId);
+			if (enterRafId !== null) cancelAnimationFrame(enterRafId);
 			if (vv) {
 				vv.removeEventListener('resize', scheduleUpdate);
 				vv.removeEventListener('scroll', scheduleUpdate);
@@ -98,6 +109,10 @@
 	style:--vv-scale-inv={scaleInv}
 	style:--fab-margin={fabMargin}
 	style:--debug-margin={debugMargin}
+	style:--fab-enter-x={fabEnterX}
+	style:--fab-enter-y={fabEnterY}
+	style:--debug-enter-x={debugEnterX}
+	style:--debug-enter-y={debugEnterY}
 >
 	<div class="fab-slot">
 		<Fab />
@@ -156,7 +171,8 @@
 		position: absolute;
 		right: var(--fab-margin);
 		bottom: var(--fab-margin);
-		transform: scale(var(--vv-scale-inv));
+		transform: translate3d(var(--fab-enter-x), var(--fab-enter-y), 0)
+			scale(var(--vv-scale-inv));
 		transform-origin: bottom right;
 		transition:
 			transform 0.1s ease,
@@ -169,7 +185,8 @@
 		position: absolute;
 		top: var(--debug-margin);
 		left: var(--debug-margin);
-		transform: scale(var(--vv-scale-inv));
+		transform: translate3d(var(--debug-enter-x), var(--debug-enter-y), 0)
+			scale(var(--vv-scale-inv));
 		transform-origin: top left;
 		transition:
 			transform 0.1s ease,
