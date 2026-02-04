@@ -2,6 +2,10 @@
 	import Fab from '$lib/Fab.svelte';
 	import Gradient from '$lib/Gradient.svelte';
 
+	const BASELINE_DPR_KEY = 'vv-baseline-dpr-v1';
+	const ZOOM_TOLERANCE = 0.02;
+	const DEFAULT_BASELINE_DPR = 1;
+
 	let supported = $state(false);
 	let width = $state(0);
 	let height = $state(0);
@@ -10,13 +14,15 @@
 	let scale = $state(1);
 	let dpr = $state(1);
 	let hasMetrics = $state(false);
-	let baseDpr = $state(1);
+	let baselineDpr = $state(DEFAULT_BASELINE_DPR);
+	let baselineInitialized = $state(false);
+	let storedBaselineDpr: number | null = null;
 	let hasEntered = $state(false);
 
 	let debounceId: ReturnType<typeof setTimeout> | null = null;
 	let enterRafId: number | null = null;
 
-	const dprRatio = $derived(dpr / baseDpr);
+	const dprRatio = $derived(dpr / baselineDpr);
 	const effectiveScale = $derived(Math.max(0.01, scale * dprRatio));
 	const scaleInv = $derived(1 / effectiveScale);
 	const fabMargin = $derived(`${16 * scaleInv}px`);
@@ -34,6 +40,36 @@
 	const fmt = (value: number, digits = 2) => value.toFixed(digits);
 	const snapCssPx = (value: number, dprValue: number) => Math.round(value * dprValue) / dprValue;
 	const snapScale = (value: number, precision = 1000) => Math.round(value * precision) / precision;
+	const isFinitePositive = (value: number) => Number.isFinite(value) && value > 0;
+	const isBaselineReasonable = (baseline: number, currentDpr: number) =>
+		baseline > currentDpr / 4 && baseline < currentDpr * 4;
+
+	const estimateZoom = () => {
+		const inner = window.innerWidth;
+		const outer = window.outerWidth;
+		if (!inner || !outer) return null;
+		const ratio = outer / inner;
+		return isFinitePositive(ratio) ? ratio : null;
+	};
+
+	const readStoredBaseline = () => {
+		try {
+			const raw = localStorage.getItem(BASELINE_DPR_KEY);
+			if (!raw) return null;
+			const parsed = Number.parseFloat(raw);
+			return isFinitePositive(parsed) ? parsed : null;
+		} catch {
+			return null;
+		}
+	};
+
+	const writeStoredBaseline = (value: number) => {
+		try {
+			localStorage.setItem(BASELINE_DPR_KEY, value.toFixed(4));
+		} catch {
+			// ignore storage failures (private mode, disabled storage, etc.)
+		}
+	};
 
 	const updateMetrics = () => {
 		const vv = window.visualViewport;
@@ -41,6 +77,31 @@
 
 		const nextDpr = window.devicePixelRatio || 1;
 		dpr = nextDpr;
+
+		const zoomEstimate = estimateZoom();
+		const inferredBaseline = zoomEstimate ? nextDpr / zoomEstimate : null;
+
+		if (!baselineInitialized) {
+			if (storedBaselineDpr && isBaselineReasonable(storedBaselineDpr, nextDpr)) {
+				baselineDpr = storedBaselineDpr;
+			} else if (inferredBaseline && isFinitePositive(inferredBaseline)) {
+				baselineDpr = inferredBaseline;
+			} else {
+				baselineDpr = nextDpr;
+			}
+			baselineInitialized = true;
+		}
+
+		if (
+			zoomEstimate !== null &&
+			Math.abs(zoomEstimate - 1) <= ZOOM_TOLERANCE &&
+			inferredBaseline !== null &&
+			isFinitePositive(inferredBaseline)
+		) {
+			baselineDpr = inferredBaseline;
+			writeStoredBaseline(inferredBaseline);
+			storedBaselineDpr = inferredBaseline;
+		}
 
 		if (vv) {
 			width = snapCssPx(vv.width, nextDpr);
@@ -72,7 +133,7 @@
 	$effect(() => {
 		if (typeof window === 'undefined') return;
 
-		baseDpr = window.devicePixelRatio || 1;
+		storedBaselineDpr = readStoredBaseline();
 		updateMetrics();
 		enterRafId = requestAnimationFrame(() => {
 			enterRafId = null;
@@ -171,8 +232,7 @@
 		position: absolute;
 		right: var(--fab-margin);
 		bottom: var(--fab-margin);
-		transform: translate3d(var(--fab-enter-x), var(--fab-enter-y), 0)
-			scale(var(--vv-scale-inv));
+		transform: translate3d(var(--fab-enter-x), var(--fab-enter-y), 0) scale(var(--vv-scale-inv));
 		transform-origin: bottom right;
 		transition:
 			transform 0.1s ease,
@@ -185,8 +245,7 @@
 		position: absolute;
 		top: var(--debug-margin);
 		left: var(--debug-margin);
-		transform: translate3d(var(--debug-enter-x), var(--debug-enter-y), 0)
-			scale(var(--vv-scale-inv));
+		transform: translate3d(var(--debug-enter-x), var(--debug-enter-y), 0) scale(var(--vv-scale-inv));
 		transform-origin: top left;
 		transition:
 			transform 0.1s ease,
