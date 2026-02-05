@@ -80,4 +80,12 @@
 
 <Gradient />
 
-<Fab />
+<Fab direction="up-left" />
+<Fab direction="up" />
+<Fab direction="up-right" />
+<Fab direction="left" />
+<Fab direction="center" />
+<Fab direction="right" />
+<Fab direction="down-left" />
+<Fab direction="down" />
+<Fab direction="down-right" />
