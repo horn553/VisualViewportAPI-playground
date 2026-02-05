@@ -18,14 +18,10 @@
 	const effectiveScale = $derived(Math.max(0.01, scale));
 	const scaleInv = $derived(1 / effectiveScale);
 	const fabMargin = $derived(`${16 * scaleInv}px`);
-	const debugMargin = $derived(`${8 * scaleInv}px`);
 	const uiVisible = $derived(hasEntered && !isViewportInteracting);
 	const uiOpacity = $derived(uiVisible ? 1 : 0);
 	const fabEnterX = $derived(uiVisible ? '0%' : '120%');
 	const fabEnterY = $derived(uiVisible ? '0%' : '120%');
-	const debugEnterX = $derived(uiVisible ? '0%' : '-120%');
-	const debugEnterY = $derived(uiVisible ? '0%' : '-120%');
-	const supportLabel = $derived(hasMetrics ? (supported ? 'yes' : 'no') : 'pending');
 	const vvWidth = $derived(hasMetrics ? `${width}px` : '100vw');
 	const vvHeight = $derived(hasMetrics ? `${height}px` : '100vh');
 	const vvLeft = $derived(`${offsetLeft}px`);
@@ -54,6 +50,16 @@
 		}
 
 		hasMetrics = true;
+		const scaleInvValue = 1 / Math.max(0.01, scale);
+		console.log({
+			supported: supported ? 'yes' : 'no',
+			scale: fmt(scale, 3),
+			offsetLeft: fmt(offsetLeft, 2),
+			offsetTop: fmt(offsetTop, 2),
+			width: fmt(width, 2),
+			height: fmt(height, 2),
+			scaleInv: fmt(scaleInvValue, 3)
+		});
 	};
 
 	const scheduleUpdate = () => {
@@ -106,46 +112,12 @@
 	style:--vv-height={vvHeight}
 	style:--vv-scale-inv={scaleInv}
 	style:--fab-margin={fabMargin}
-	style:--debug-margin={debugMargin}
 	style:--fab-enter-x={fabEnterX}
 	style:--fab-enter-y={fabEnterY}
-	style:--debug-enter-x={debugEnterX}
-	style:--debug-enter-y={debugEnterY}
 	style:--ui-opacity={uiOpacity}
 >
 	<div class="fab-slot">
 		<Fab />
-	</div>
-
-	<div class="vv-debug">
-		<div class="row">
-			<span class="label">supported</span>
-			<span class="value">{supportLabel}</span>
-		</div>
-		<div class="row">
-			<span class="label">scale</span>
-			<span class="value">{fmt(scale, 3)}</span>
-		</div>
-		<div class="row">
-			<span class="label">offsetLeft</span>
-			<span class="value">{fmt(offsetLeft, 2)}</span>
-		</div>
-		<div class="row">
-			<span class="label">offsetTop</span>
-			<span class="value">{fmt(offsetTop, 2)}</span>
-		</div>
-		<div class="row">
-			<span class="label">width</span>
-			<span class="value">{fmt(width, 2)}</span>
-		</div>
-		<div class="row">
-			<span class="label">height</span>
-			<span class="value">{fmt(height, 2)}</span>
-		</div>
-		<div class="row">
-			<span class="label">scaleInv</span>
-			<span class="value">{fmt(scaleInv, 3)}</span>
-		</div>
 	</div>
 </div>
 
@@ -177,36 +149,4 @@
 		pointer-events: auto;
 	}
 
-	.vv-debug {
-		position: absolute;
-		top: var(--debug-margin);
-		left: var(--debug-margin);
-		transform: translate3d(var(--debug-enter-x), var(--debug-enter-y), 0) scale(var(--vv-scale-inv));
-		transform-origin: top left;
-		opacity: var(--ui-opacity);
-		transition:
-			transform 0.1s ease,
-			opacity 0.1s ease,
-			top 0.1s ease,
-			left 0.1s ease;
-		pointer-events: auto;
-		background: rgba(255, 255, 255, 0.9);
-		border-radius: 8px;
-		padding: 8px 10px;
-		font-family: 'Courier New', Courier, monospace;
-		font-size: 12px;
-		color: #111;
-		box-shadow: 0 8px 18px rgba(0, 0, 0, 0.15);
-	}
-
-	.vv-debug .row {
-		display: flex;
-		gap: 8px;
-		justify-content: space-between;
-		white-space: nowrap;
-	}
-
-	.vv-debug .label {
-		opacity: 0.7;
-	}
 </style>
