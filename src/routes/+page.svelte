@@ -2,29 +2,20 @@
 	import Fab from '$lib/Fab.svelte';
 	import Gradient from '$lib/Gradient.svelte';
 
-	const BASELINE_DPR_KEY = 'vv-baseline-dpr-v1';
-	const ZOOM_TOLERANCE = 0.02;
-	const DEFAULT_BASELINE_DPR = 1;
-
 	let supported = $state(false);
 	let width = $state(0);
 	let height = $state(0);
 	let offsetLeft = $state(0);
 	let offsetTop = $state(0);
 	let scale = $state(1);
-	let dpr = $state(1);
 	let hasMetrics = $state(false);
-	let baselineDpr = $state(DEFAULT_BASELINE_DPR);
-	let baselineInitialized = $state(false);
-	let storedBaselineDpr: number | null = null;
 	let hasEntered = $state(false);
 	let isViewportInteracting = $state(false);
 
 	let debounceId: ReturnType<typeof setTimeout> | null = null;
 	let enterRafId: number | null = null;
 
-	const dprRatio = $derived(dpr / baselineDpr);
-	const effectiveScale = $derived(Math.max(0.01, scale * dprRatio));
+	const effectiveScale = $derived(Math.max(0.01, scale));
 	const scaleInv = $derived(1 / effectiveScale);
 	const fabMargin = $derived(`${16 * scaleInv}px`);
 	const debugMargin = $derived(`${8 * scaleInv}px`);
@@ -41,76 +32,18 @@
 	const vvTop = $derived(`${offsetTop}px`);
 
 	const fmt = (value: number, digits = 2) => value.toFixed(digits);
-	const snapCssPx = (value: number, dprValue: number) => Math.round(value * dprValue) / dprValue;
+	const snapCssPx = (value: number, precision = 100) => Math.round(value * precision) / precision;
 	const snapScale = (value: number, precision = 1000) => Math.round(value * precision) / precision;
-	const isFinitePositive = (value: number) => Number.isFinite(value) && value > 0;
-	const isBaselineReasonable = (baseline: number, currentDpr: number) =>
-		baseline > currentDpr / 4 && baseline < currentDpr * 4;
-
-	const estimateZoom = () => {
-		const inner = window.innerWidth;
-		const outer = window.outerWidth;
-		if (!inner || !outer) return null;
-		const ratio = outer / inner;
-		return isFinitePositive(ratio) ? ratio : null;
-	};
-
-	const readStoredBaseline = () => {
-		try {
-			const raw = localStorage.getItem(BASELINE_DPR_KEY);
-			if (!raw) return null;
-			const parsed = Number.parseFloat(raw);
-			return isFinitePositive(parsed) ? parsed : null;
-		} catch {
-			return null;
-		}
-	};
-
-	const writeStoredBaseline = (value: number) => {
-		try {
-			localStorage.setItem(BASELINE_DPR_KEY, value.toFixed(4));
-		} catch {
-			// ignore storage failures (private mode, disabled storage, etc.)
-		}
-	};
 
 	const updateMetrics = () => {
 		const vv = window.visualViewport;
 		supported = !!vv;
 
-		const nextDpr = window.devicePixelRatio || 1;
-		dpr = nextDpr;
-
-		const zoomEstimate = estimateZoom();
-		const inferredBaseline = zoomEstimate ? nextDpr / zoomEstimate : null;
-
-		if (!baselineInitialized) {
-			if (storedBaselineDpr && isBaselineReasonable(storedBaselineDpr, nextDpr)) {
-				baselineDpr = storedBaselineDpr;
-			} else if (inferredBaseline && isFinitePositive(inferredBaseline)) {
-				baselineDpr = inferredBaseline;
-			} else {
-				baselineDpr = nextDpr;
-			}
-			baselineInitialized = true;
-		}
-
-		if (
-			zoomEstimate !== null &&
-			Math.abs(zoomEstimate - 1) <= ZOOM_TOLERANCE &&
-			inferredBaseline !== null &&
-			isFinitePositive(inferredBaseline)
-		) {
-			baselineDpr = inferredBaseline;
-			writeStoredBaseline(inferredBaseline);
-			storedBaselineDpr = inferredBaseline;
-		}
-
 		if (vv) {
-			width = snapCssPx(vv.width, nextDpr);
-			height = snapCssPx(vv.height, nextDpr);
-			offsetLeft = snapCssPx(vv.offsetLeft, nextDpr);
-			offsetTop = snapCssPx(vv.offsetTop, nextDpr);
+			width = snapCssPx(vv.width);
+			height = snapCssPx(vv.height);
+			offsetLeft = snapCssPx(vv.offsetLeft);
+			offsetTop = snapCssPx(vv.offsetTop);
 			scale = snapScale(vv.scale);
 		} else {
 			width = window.innerWidth;
@@ -138,7 +71,6 @@
 	$effect(() => {
 		if (typeof window === 'undefined') return;
 
-		storedBaselineDpr = readStoredBaseline();
 		updateMetrics();
 		enterRafId = requestAnimationFrame(() => {
 			enterRafId = null;
@@ -211,12 +143,8 @@
 			<span class="value">{fmt(height, 2)}</span>
 		</div>
 		<div class="row">
-			<span class="label">devicePixelRatio</span>
-			<span class="value">{fmt(dpr, 3)}</span>
-		</div>
-		<div class="row">
-			<span class="label">effectiveScale</span>
-			<span class="value">{fmt(effectiveScale, 3)}</span>
+			<span class="label">scaleInv</span>
+			<span class="value">{fmt(scaleInv, 3)}</span>
 		</div>
 	</div>
 </div>
