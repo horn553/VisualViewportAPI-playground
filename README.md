@@ -1,42 +1,41 @@
-# sv
+# VisualViewportAPI playground
 
-Everything you need to build a Svelte project, powered by [`sv`](https://github.com/sveltejs/cli).
+VisualViewport API を使って、オーバーレイ UI（FAB と debug パネル）を viewport に追従させる検証用プロジェクトです。
 
-## Creating a project
-
-If you're seeing this, you've probably already done this step. Congrats!
+## 開発
 
 ```sh
-# create a new project
-npx sv create my-app
-```
-
-To recreate this project with the same configuration:
-
-```sh
-# recreate this project
-npx sv create --template minimal --types ts --add prettier eslint --install npm .
-```
-
-## Developing
-
-Once you've created a project and installed dependencies with `npm install` (or `pnpm install` or `yarn`), start a development server:
-
-```sh
+npm install
 npm run dev
-
-# or start the server and open the app in a new browser tab
-npm run dev -- --open
 ```
 
-## Building
+## 現在の拡大縮小仕様（単純化後）
 
-To create a production version of your app:
+このプロジェクトは **`VisualViewport.scale` のみ** を拡大縮小管理に使用します。
+
+- `devicePixelRatio` は拡大縮小補正に使用しません。
+- PC ブラウザのズームでは、UI の見え方が従来どおり不変になることは保証しません。
+- スマホのピンチイン/アウトでは、`scale` に対する逆スケールにより、UI の見かけサイズ・配置の安定を狙います。
+
+## 動作確認チェックリスト
+
+1. **PCブラウザズーム**
+   - ブラウザズーム時に、FAB と debug パネルが以前の「完全不変」挙動ではなくても問題ないこと。
+
+2. **モバイルのピンチイン/アウト**
+   - ピンチ操作時に、FAB と debug パネルの見かけサイズ・配置が大きく崩れないこと。
+
+3. **VisualViewport 非対応環境**
+   - フォールバック（`scale=1`, `innerWidth/innerHeight`）で表示が破綻しないこと。
+
+確認対象は `src/routes/+page.svelte` の以下です。
+
+- `--vv-scale-inv` を使う transform（`.fab-slot`, `.vv-debug`）
+- viewport metrics の追従（`width`, `height`, `offsetLeft`, `offsetTop`）
+
+## ビルド
 
 ```sh
 npm run build
+npm run preview
 ```
-
-You can preview the production build with `npm run preview`.
-
-> To deploy your app, you may need to install an [adapter](https://svelte.dev/docs/kit/adapters) for your target environment.
